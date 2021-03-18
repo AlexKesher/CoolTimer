@@ -1,0 +1,14 @@
+<resources>
+    <!-- Melody Preference -->
+    <string-array name="timer_melody_labels">
+        <item>Bell</item>
+        <item>Alarm siren</item>
+        <item>Bip</item>
+    </string-array>
+
+    <string-array name="timer_melody_values">
+        <item>bell</item>
+        <item>alarm_siren</item>
+        <item>bip</item>
+    </string-array>
+</resources>

@@ -1,0 +1,17 @@
+<PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <ListPreference
+        app:key="timer_melody"
+        app:title="Timer melody"
+        app:defaultValue="bell"
+        app:entries="@array/timer_melody_labels"
+        app:entryValues="@array/timer_melody_values"
+        app:useSimpleSummaryProvider="true"/>
+
+    <EditTextPreference
+        app:key="default_interval"
+        app:title="Default interval"
+        app:defaultValue="30"
+        app:useSimpleSummaryProvider="true" />
+
+</PreferenceScreen>

@@ -3,8 +3,11 @@ package com.example.cooltimer;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.preference.Preference;
+import androidx.preference.PreferenceManager;
 
-import android.content.DialogInterface;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.CountDownTimer;
@@ -15,21 +18,23 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.SeekBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity
+        implements SharedPreferences.OnSharedPreferenceChangeListener {
 
-    SeekBar seekBar;
-    TextView textView;
-    Button button;
+    private SeekBar seekBar;
+    private TextView textView;
+    private Button button;
 
-    MediaPlayer mediaPlayer;
+    private MediaPlayer mediaPlayer;
 
-    boolean timerIsCounting = false;
-    CountDownTimer countDownTimer;
+    private boolean timerIsCounting = false;
+    private CountDownTimer countDownTimer;
 
-    int defaultSeconds = 30;
-    int maxTimerSeconds = 600;
+    private SharedPreferences sp;
+
+    private int defaultInterval;
+    private int maxTimerSeconds = 600;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -40,16 +45,16 @@ public class MainActivity extends AppCompatActivity {
         button = findViewById(R.id.button);
         textView = findViewById(R.id.textView);
 
+        sp = PreferenceManager.getDefaultSharedPreferences(this);
+        sp.registerOnSharedPreferenceChangeListener(this);
+        defaultInterval = Integer.parseInt(sp.getString("default_interval", "30"));
         tuneSeekBar();
-
-        formAndSetTimerText(defaultSeconds);
-
-        mediaPlayer = MediaPlayer.create(this, R.raw.bell_sound);
+        formAndSetTimerText(defaultInterval);
     }
 
     public void tuneSeekBar() {
         seekBar.setMax(maxTimerSeconds);
-        seekBar.setProgress(defaultSeconds);
+        seekBar.setProgress(defaultInterval);
 
         seekBar.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener() {
             @Override
@@ -69,7 +74,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    public void formAndSetTimerText(long totalSecondsLeft) {
+    public void formAndSetTimerText(int totalSecondsLeft) {
         int minutes = (int) (totalSecondsLeft / 60);
         int seconds = (int) (totalSecondsLeft % 60);
 
@@ -93,7 +98,7 @@ public class MainActivity extends AppCompatActivity {
             stopCountDownTimer();
         }
 
-        if (mediaPlayer.isPlaying()) {
+        if (mediaPlayer != null && mediaPlayer.isPlaying()) {
             mediaPlayer.pause();
             mediaPlayer.seekTo(0);
         }
@@ -107,16 +112,23 @@ public class MainActivity extends AppCompatActivity {
         countDownTimer = new CountDownTimer(1000 * seekBar.getProgress(), 1000) {
             @Override
             public void onTick(long millisUntilFinished) {
-                long totalSecondsLeft = millisUntilFinished / 1000 + 1;
+                int totalSecondsLeft = (int) (millisUntilFinished / 1000) + 1;
                 formAndSetTimerText(totalSecondsLeft);
-                Log.i("Tick", "" + totalSecondsLeft);
             }
 
             @Override
             public void onFinish() {
                 stopCountDownTimer();
+
+                String melodyName = sp.getString("timer_melody", "bell");
+                if (melodyName.equals("bell")) {
+                    mediaPlayer = MediaPlayer.create(getApplicationContext(), R.raw.bell_sound);
+                } else if (melodyName.equals("alarm_siren")) {
+                    mediaPlayer = MediaPlayer.create(getApplicationContext(), R.raw.alarm_siren_sound);
+                } else if (melodyName.equals("bip")) {
+                    mediaPlayer = MediaPlayer.create(getApplicationContext(), R.raw.bip_sound);
+                }
                 mediaPlayer.start();
-                Log.i("Tick", "finished");
             }
         }.start();
 
@@ -129,11 +141,11 @@ public class MainActivity extends AppCompatActivity {
         if (countDownTimer != null) {
             countDownTimer.cancel();
         }
-        button.setText(getString(R.string.stop));
+        button.setText(getString(R.string.start));
         timerIsCounting = false;
         seekBar.setEnabled(true);
-        seekBar.setProgress(defaultSeconds);
-        formAndSetTimerText(defaultSeconds);
+        seekBar.setProgress(defaultInterval);
+        formAndSetTimerText(defaultInterval);
     }
 
     @Override
@@ -145,7 +157,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (item.getItemId() == R.id.menu_item_settings) {
-            Toast.makeText(this, item.getTitle() + " will be later, maybe", Toast.LENGTH_SHORT).show();
+            Intent intent = new Intent(this, SettingsActivity.class);
+            startActivity(intent);
         } else if (item.getItemId() == R.id.menu_item_about) {
             new AlertDialog.Builder(this)
                     .setTitle("About")
@@ -156,5 +169,24 @@ public class MainActivity extends AppCompatActivity {
                     .show();
         }
         return true;
+    }
+
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+        if (key.equals("default_interval")) {
+            try {
+                defaultInterval = Integer.parseInt(sp.getString("default_interval", "30"));
+            } catch (NumberFormatException e) {
+
+            }
+            formAndSetTimerText(defaultInterval);
+            seekBar.setProgress(defaultInterval);
+        }
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        sp.unregisterOnSharedPreferenceChangeListener(this);
     }
 }
